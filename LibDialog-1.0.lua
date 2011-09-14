@@ -162,6 +162,13 @@ function _ReleaseDialog(dialog)
     _RefreshDialogAnchors()
 end
 
+if not lib.hooked_onhide then
+    _G.hooksecurefunc("StaticPopup_OnHide", function()
+        _RefreshDialogAnchors()
+    end)
+    lib.hooked_onhide = true
+end
+
 if not lib.hooked_set_up_position then
     _G.hooksecurefunc("StaticPopup_SetUpPosition", function()
         _RefreshDialogAnchors()
