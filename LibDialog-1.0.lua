@@ -75,25 +75,23 @@ local _ReleaseDialog
 -----------------------------------------------------------------------
 -- Helper functions.
 -----------------------------------------------------------------------
-local function _Dialog_OnShow(dialog)
-    local delegate = dialog.delegate
+local function _RefreshDialogAnchors()
+    for index = 1, #active_dialogs do
+        local current_dialog = active_dialogs[index]
+        current_dialog:ClearAllPoints()
 
-    _G.PlaySound("igMainMenuOpen")
+        if index == 1 then
+            local default_dialog = _G.StaticPopup_DisplayedFrames[#_G.StaticPopup_DisplayedFrames]
 
-    if delegate.OnShow then
-        delegate.OnShow(dialog, dialog.data)
+            if default_dialog then
+                current_dialog:SetPoint("TOP", default_dialog, "BOTTOM", 0, 0)
+            else
+                current_dialog:SetPoint("TOP", _G.UIParent, "TOP", 0, -135)
+            end
+        else
+            current_dialog:SetPoint("TOP", active_dialogs[index - 1], "BOTTOM", 0, 0)
+        end
     end
-end
-
-local function _Dialog_OnHide(dialog)
-    local delegate = dialog.delegate
-
-    _G.PlaySound("igMainMenuClose")
-
-    if delegate.OnHide then
-        delegate.OnHide(dialog, dialog.data)
-    end
-    _ReleaseDialog(dialog)
 end
 
 local function _AcquireDialog()
@@ -117,34 +115,7 @@ local function _AcquireDialog()
     return dialog
 end
 
-local function _RefreshDialogAnchors()
-    for index = 1, #active_dialogs do
-        local current_dialog = active_dialogs[index]
-        current_dialog:ClearAllPoints()
-
-        if index == 1 then
-            local default_dialog = _G.StaticPopup_DisplayedFrames[#_G.StaticPopup_DisplayedFrames]
-
-            if default_dialog then
-                current_dialog:SetPoint("TOP", default_dialog, "BOTTOM", 0, 0)
-            else
-                current_dialog:SetPoint("TOP", _G.UIParent, "TOP", 0, -135)
-            end
-        else
-            current_dialog:SetPoint("TOP", active_dialogs[index - 1], "BOTTOM", 0, 0)
-        end
-    end
-end
-
--- Upvalued at top of file.
 function _ReleaseDialog(dialog)
-    -- If the dialog is already in the heap, terminate.
-    for index = 1, #dialog_heap do
-        if dialog_heap[index] == dialog then
-            return
-        end
-    end
-    dialog:Hide()
     dialog.delegate = nil
 
     local remove_index
@@ -158,8 +129,28 @@ function _ReleaseDialog(dialog)
         table.remove(active_dialogs, remove_index):ClearAllPoints()
     end
     table.insert(dialog_heap, dialog)
-
     _RefreshDialogAnchors()
+end
+
+local function _Dialog_OnShow(dialog)
+    local delegate = dialog.delegate
+
+    _G.PlaySound("igMainMenuOpen")
+
+    if delegate.OnShow then
+        delegate.OnShow(dialog, dialog.data)
+    end
+end
+
+local function _Dialog_OnHide(dialog)
+    local delegate = dialog.delegate
+
+    _G.PlaySound("igMainMenuClose")
+
+    if delegate.OnHide then
+        delegate.OnHide(dialog, dialog.data)
+    end
+    _ReleaseDialog(dialog)
 end
 
 if not lib.hooked_onhide then
@@ -195,7 +186,7 @@ if not lib.hooked_escape_pressed then
             if delegate.OnCancel and not delegate.cancel_ignores_escape then
                 delegate.OnCancel(dialog)
             end
-            _ReleaseDialog(dialog)
+            dialog:Hide()
         end
     end)
     lib.hooked_escape_pressed = true
