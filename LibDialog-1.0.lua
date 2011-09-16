@@ -117,6 +117,7 @@ end
 
 function _ReleaseDialog(dialog)
     dialog.delegate = nil
+    dialog.data = nil
 
     local remove_index
     for index = 1, #active_dialogs do
