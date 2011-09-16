@@ -242,6 +242,11 @@ function lib:Spawn(reference, ...)
     if not dialog then
         return
     end
+    local delegate = dialog.delegate
+
+    if delegate.sound then
+        _G.PlaySound(delegate.sound)
+    end
 
     -- Anchor to the bottom of existing dialogs. If none exist, check to see if there are visible default StaticPopupDialogs and anchor to that instead; else, anchor to UIParent.
     if #active_dialogs > 0 then
