@@ -53,6 +53,8 @@ local DEFAULT_DIALOG_HEIGHT = 72
 
 local DEFAULT_DIALOG_TEXT_WIDTH = 290
 
+local MAX_DIALOGS = 4
+
 local DEFAULT_DIALOG_BACKDROP = {
     bgFile = [[Interface\DialogFrame\UI-DialogBox-Background]],
     edgeFile = [[Interface\DialogFrame\UI-DialogBox-Border]],
@@ -199,6 +201,10 @@ local function _BuildDialog(delegate, ...)
 
     if not dialog_text or dialog_text == "" then
         error("Dialog text required.", 3)
+    end
+
+    if #active_dialogs == MAX_DIALOGS then
+        return
     end
     local dialog = _AcquireDialog()
     dialog.delegate = delegate
