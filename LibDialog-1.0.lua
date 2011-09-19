@@ -34,14 +34,20 @@ local dialog_meta = {
 -- Migrations.
 -----------------------------------------------------------------------
 lib.delegates = lib.delegates or {}
-lib.active_dialogs = lib.active_dialogs or {}
+lib.queued_delegates = lib.queues_delegates or {}
+lib.delegate_queue = lib.delegate_queue or {}
 
+lib.active_dialogs = lib.active_dialogs or {}
 lib.dialog_heap = lib.dialog_heap or {}
 lib.button_heap = lib.button_heap or {}
 
 -----------------------------------------------------------------------
 -- Constants.
 -----------------------------------------------------------------------
+local delegates = lib.delegates
+local queued_delegates = lib.queued_delegates
+local delegate_queue = lib.delegate_queue
+
 local active_dialogs = lib.active_dialogs
 local dialog_heap = lib.dialog_heap
 local button_heap = lib.button_heap
@@ -72,11 +78,28 @@ local DEFAULT_DIALOG_BACKDROP = {
 -----------------------------------------------------------------------
 -- Upvalues.
 -----------------------------------------------------------------------
-local _ReleaseDialog
 
 -----------------------------------------------------------------------
 -- Helper functions.
 -----------------------------------------------------------------------
+local function _ProcessQueue()
+    if #active_dialogs == MAX_DIALOGS then
+        return
+    end
+    local delegate = table.remove(delegate_queue)
+
+    if not delegate then
+        return
+    end
+    local data = queued_delegates[delegate]
+    queued_delegates[delegate] = nil
+
+    if data == "" then
+        data = nil
+    end
+    return lib:Spawn(delegate, data)
+end
+
 local function _RefreshDialogAnchors()
     for index = 1, #active_dialogs do
         local current_dialog = active_dialogs[index]
@@ -96,28 +119,7 @@ local function _RefreshDialogAnchors()
     end
 end
 
-local function _AcquireDialog()
-    local dialog = table.remove(dialog_heap)
-
-    if not dialog then
-        dialog = _G.setmetatable(_G.CreateFrame("Frame", ("%s_Dialog%d"):format(MAJOR, #active_dialogs + 1), _G.UIParent), dialog_meta)
-
-        local close_button = _G.CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
-        close_button:SetPoint("TOPRIGHT", -3, -3)
-
-        dialog.close_button = close_button
-
-        local text = dialog:CreateFontString(nil, nil, "GameFontHighlight")
-        text:SetWidth(DEFAULT_DIALOG_TEXT_WIDTH)
-        text:SetPoint("TOP", 0, -16)
-
-        dialog.text = text
-    end
-    dialog:Reset()
-    return dialog
-end
-
-function _ReleaseDialog(dialog)
+local function _ReleaseDialog(dialog)
     dialog.delegate = nil
     dialog.data = nil
 
@@ -159,6 +161,13 @@ end
 if not lib.hooked_onhide then
     _G.hooksecurefunc("StaticPopup_OnHide", function()
         _RefreshDialogAnchors()
+
+        if #delegate_queue > 0 then
+            local delegate
+            repeat
+                delegate = _ProcessQueue()
+            until not delegate
+        end
     end)
     lib.hooked_onhide = true
 end
@@ -174,8 +183,6 @@ if not lib.hooked_escape_pressed then
     local dialogs_to_release = {}
 
     _G.hooksecurefunc("StaticPopup_EscapePressed", function()
-        local active_dialogs = lib.active_dialogs
-
         table.wipe(dialogs_to_release)
 
         for index = 1, #active_dialogs do
@@ -191,22 +198,49 @@ if not lib.hooked_escape_pressed then
             end
             dialog:Hide()
         end
+
+        if #delegate_queue > 0 then
+            local delegate
+            repeat
+                delegate = _ProcessQueue()
+            until not delegate
+        end
     end)
     lib.hooked_escape_pressed = true
 end
 
 local function _BuildDialog(delegate, ...)
     local data = ...
-    local dialog_text = delegate.Text(data)
+    local dialog_text = delegate.text
 
     if not dialog_text or dialog_text == "" then
         error("Dialog text required.", 3)
     end
 
     if #active_dialogs == MAX_DIALOGS then
+        if not queued_delegates[delegate] then
+            delegate_queue[#delegate_queue + 1] = delegate
+            queued_delegates[delegate] = data or ""
+        end
         return
     end
-    local dialog = _AcquireDialog()
+    local dialog = table.remove(dialog_heap)
+
+    if not dialog then
+        dialog = _G.setmetatable(_G.CreateFrame("Frame", ("%s_Dialog%d"):format(MAJOR, #active_dialogs + 1), _G.UIParent), dialog_meta)
+
+        local close_button = _G.CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
+        close_button:SetPoint("TOPRIGHT", -3, -3)
+
+        dialog.close_button = close_button
+
+        local text = dialog:CreateFontString(nil, nil, "GameFontHighlight")
+        text:SetWidth(DEFAULT_DIALOG_TEXT_WIDTH)
+        text:SetPoint("TOP", 0, -16)
+
+        dialog.text = text
+    end
+    dialog:Reset()
     dialog.delegate = delegate
     dialog.data = data
     dialog.text:SetText(dialog_text)
@@ -268,6 +302,7 @@ function lib:Spawn(reference, ...)
     end
     active_dialogs[#active_dialogs + 1] = dialog
     dialog:Show()
+    return dialog
 end
 
 -----------------------------------------------------------------------
