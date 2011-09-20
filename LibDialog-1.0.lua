@@ -67,6 +67,11 @@ local METHOD_USAGE_FORMAT = MAJOR .. ":%s() - %s."
 local DEFAULT_DIALOG_WIDTH = 320
 local DEFAULT_DIALOG_HEIGHT = 72
 
+local DEFAULT_EDITBOX_WIDTH = 130
+local DEFAULT_EDITBOX_HEIGHT = 32
+
+local DEFAULT_CHECKBOX_SIZE = 32
+
 local DEFAULT_DIALOG_TEXT_WIDTH = 290
 
 local MAX_DIALOGS = 4
@@ -266,11 +271,12 @@ local function _AcquireCheckBox(parent)
     checkbox:SetParent(parent)
     checkbox.text:SetText(parent.delegate.CheckBoxText or "")
 
-    if parent.editbox then
-        checkbox:SetPoint("TOPLEFT", parent.editbox, "BOTTOMLEFT", 0, 0)
-    else
-        checkbox:SetPoint("BOTTOMLEFT", 0, 45)
-    end
+--    if parent.editbox then
+--        checkbox:SetPoint("TOPLEFT", parent.editbox, "BOTTOMLEFT", 0, 0)
+--    else
+        checkbox:SetPoint("BOTTOMLEFT", 10, 10)
+--    end
+    checkbox:Show()
     return checkbox
 end
 
@@ -342,7 +348,7 @@ local function _AcquireEditBox(parent)
 
     editbox:SetText("")
     editbox:SetParent(parent)
-    editbox:SetPoint("BOTTOM", 0, 45)
+    editbox:SetPoint("TOP", parent.text, "BOTTOM", 0, -8)
     editbox:Show()
     return editbox
 end
@@ -392,6 +398,7 @@ local function _BuildDialog(delegate, ...)
         local checkbox = _AcquireCheckBox(dialog)
         dialog.checkbox = checkbox
     end
+    dialog:Resize()
     return dialog
 end
 
@@ -467,4 +474,40 @@ function dialog_prototype:Reset()
 
     self:SetScript("OnShow", _Dialog_OnShow)
     self:SetScript("OnHide", _Dialog_OnHide)
+end
+
+function dialog_prototype:Resize()
+    local delegate = self.delegate
+    local width = delegate.width or 0
+    local height = delegate.height or 0
+
+    -- Static size ignores widgets for resizing purposes.
+    if delegate.static_size then
+        if width > 0 then
+            self:SetWidth(width)
+        end
+
+        if height > 0 then
+            self:SetHeight(height)
+        end
+        return
+    end
+
+    height = 32 + self.text:GetHeight()
+
+    if self.editbox then
+        height = height + self.editbox:GetHeight()
+    end
+
+    if self.checkbox then
+        height = height + self.checkbox:GetHeight()
+    end
+
+    if width > 0 then
+        self:SetWidth(width)
+    end
+
+    if height > 0 then
+        self:SetHeight(height)
+    end
 end
