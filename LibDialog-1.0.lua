@@ -38,8 +38,13 @@ lib.queued_delegates = lib.queues_delegates or {}
 lib.delegate_queue = lib.delegate_queue or {}
 
 lib.active_dialogs = lib.active_dialogs or {}
+lib.active_checkboxes = lib.active_checkboxes or {}
+lib.active_editboxes = lib.active_editboxes or {}
+
 lib.dialog_heap = lib.dialog_heap or {}
 lib.button_heap = lib.button_heap or {}
+lib.checkbox_heap = lib.checkbox_heap or {}
+lib.editbox_heap = lib.editbox_heap or {}
 
 -----------------------------------------------------------------------
 -- Constants.
@@ -49,8 +54,13 @@ local queued_delegates = lib.queued_delegates
 local delegate_queue = lib.delegate_queue
 
 local active_dialogs = lib.active_dialogs
+local active_checkboxes = lib.active_checkboxes
+local active_editboxes = lib.active_editboxes
+
 local dialog_heap = lib.dialog_heap
 local button_heap = lib.button_heap
+local checkbox_heap = lib.checkbox_heap
+local editbox_heap = lib.editbox_heap
 
 local METHOD_USAGE_FORMAT = MAJOR .. ":%s() - %s."
 
@@ -119,21 +129,47 @@ local function _RefreshDialogAnchors()
     end
 end
 
-local function _ReleaseDialog(dialog)
-    dialog.delegate = nil
-    dialog.data = nil
-
+local function _RecycleWidget(widget, actives, heap)
     local remove_index
-    for index = 1, #active_dialogs do
-        if active_dialogs[index] == dialog then
+
+    for index = 1, #actives do
+        if actives[index] == widget then
             remove_index = index
         end
     end
 
     if remove_index then
-        table.remove(active_dialogs, remove_index):ClearAllPoints()
+        table.remove(actives, remove_index):ClearAllPoints()
     end
-    table.insert(dialog_heap, dialog)
+    table.insert(heap, widget)
+end
+
+local function _ReleaseCheckBox(checkbox)
+    checkbox:Hide()
+    _RecycleWidget(checkbox, active_checkboxes, checkbox_heap)
+    checkbox:SetParent(nil)
+end
+
+local function _ReleaseEditBox(editbox)
+    editbox:Hide()
+    _RecycleWidget(editbox, active_editboxes, editbox_heap)
+    editbox:SetParent(nil)
+end
+
+local function _ReleaseDialog(dialog)
+    dialog.delegate = nil
+    dialog.data = nil
+
+    if dialog.editbox then
+        _ReleaseEditBox(dialog.editbox)
+        dialog.editbox = nil
+    end
+
+    if dialog.checkbox then
+        _ReleaseCheckBox(dialog.checkbox)
+        dialog.checkbox = nil
+    end
+    _RecycleWidget(dialog, active_dialogs, dialog_heap)
     _RefreshDialogAnchors()
 end
 
@@ -209,6 +245,108 @@ if not lib.hooked_escape_pressed then
     lib.hooked_escape_pressed = true
 end
 
+local function CheckBox_OnClick(checkbox, mouse_button, down)
+    local dialog = checkbox:GetParent()
+    local on_click = dialog.delegate.CheckBoxOnClick
+
+    if on_click then
+        on_click(checkbox, mouse_button, down, dialog.data)
+    end
+end
+
+local function _AcquireCheckBox(parent)
+    local checkbox = table.remove(checkbox_heap)
+
+    if not checkbox then
+        checkbox = _G.CreateFrame("CheckButton", ("%s_CheckBox%d"):format(MAJOR, #active_checkboxes + 1), _G.UIParent, "UICheckButtonTemplate")
+        checkbox:SetScript("OnClick", CheckBox_OnClick)
+    end
+    active_checkboxes[#active_checkboxes + 1] = checkbox
+
+    checkbox:SetParent(parent)
+    checkbox.text:SetText(parent.delegate.CheckBoxText or "")
+
+    if parent.editbox then
+        checkbox:SetPoint("TOPLEFT", parent.editbox, "BOTTOMLEFT", 0, 0)
+    else
+        checkbox:SetPoint("BOTTOMLEFT", 0, 45)
+    end
+    return checkbox
+end
+
+local function EditBox_OnEnterPressed(editbox)
+    if not editbox.autoCompleteParams or not _G.AutoCompleteEditBox_OnEnterPressed(editbox) then
+        local dialog = editbox:GetParent()
+        local on_enter_pressed = dialog.delegate.EditBoxOnEnterPressed
+
+        if on_enter_pressed then
+            on_enter_pressed(editbox, dialog.data)
+        end
+    end
+end
+
+local function EditBox_OnEscapePressed(editbox)
+    local dialog = editbox:GetParent()
+    local on_escape_pressed = dialog.delegate.EditBoxOnEscapePressed
+
+    if on_escape_pressed then
+        on_escape_pressed(editbox, dialog.data)
+    end
+end
+
+local function EditBox_OnTextChanged(editbox, user_input)
+    if not editbox.autoCompleteParams or not _G.AutoCompleteEditBox_OnTextChanged(editbox, user_input) then
+        local dialog = editbox:GetParent()
+        local on_text_changed = dialog.delegate.EditBoxOnTextChanged
+
+        if on_text_changed then
+            on_text_changed(editbox, dialog.data)
+        end
+    end
+end
+
+local function _AcquireEditBox(parent)
+    local editbox = table.remove(editbox_heap)
+
+    if not editbox then
+        local editbox_name = ("%s_EditBox%d"):format(MAJOR, #active_editboxes + 1)
+
+        editbox = _G.CreateFrame("EditBox", editbox_name, _G.UIParent, "AutoCompleteEditBoxTemplate")
+        editbox:SetWidth(130)
+        editbox:SetHeight(32)
+        editbox:SetFontObject("ChatFontNormal")
+
+        local left = editbox:CreateTexture(("%sLeft"):format(editbox_name), "BACKGROUND")
+        left:SetTexture([[Interface\ChatFrame\UI-ChatInputBorder-Left2]])
+        left:SetWidth(32)
+        left:SetHeight(32)
+        left:SetPoint("LEFT", -10, 0)
+
+        local right = editbox:CreateTexture(("%sRight"):format(editbox_name), "BACKGROUND")
+        right:SetTexture([[Interface\ChatFrame\UI-ChatInputBorder-Right2]])
+        right:SetWidth(32)
+        right:SetHeight(32)
+        right:SetPoint("RIGHT", 10, 0)
+
+        local mid = editbox:CreateTexture(("%sMid"):format(editbox_name), "BACKGROUND")
+        mid:SetTexture([[Interface\ChatFrame\UI-ChatInputBorder-Mid2]])
+        mid:SetHeight(32)
+        mid:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
+        mid:SetPoint("TOPRIGHT", right, "TOPLEFT", 0, 0)
+
+        editbox:SetScript("OnEnterPressed", EditBox_OnEnterPressed)
+        editbox:SetScript("OnEscapePressed", EditBox_OnEscapePressed)
+        editbox:SetScript("OnTextChanged", EditBox_OnTextChanged)
+    end
+    active_editboxes[#active_editboxes + 1] = editbox
+
+    editbox:SetText("")
+    editbox:SetParent(parent)
+    editbox:SetPoint("BOTTOM", 0, 45)
+    editbox:Show()
+    return editbox
+end
+
 local function _BuildDialog(delegate, ...)
     local data = ...
     local dialog_text = delegate.text
@@ -245,6 +383,15 @@ local function _BuildDialog(delegate, ...)
     dialog.data = data
     dialog.text:SetText(dialog_text)
 
+    if delegate.has_editbox then
+        local editbox = _AcquireEditBox(dialog)
+        dialog.editbox = editbox
+    end
+
+    if delegate.has_checkbox then
+        local checkbox = _AcquireCheckBox(dialog)
+        dialog.checkbox = checkbox
+    end
     return dialog
 end
 
