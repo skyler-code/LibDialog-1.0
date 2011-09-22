@@ -277,7 +277,12 @@ local function _AcquireCheckBox(parent)
 
     checkbox.text:SetText(parent.delegate.checkbox.label or "")
     checkbox:SetParent(parent)
-    checkbox:SetPoint("BOTTOMLEFT", 10, 10)
+
+    if parent.buttons and #parent.buttons > 0 then
+        checkbox:SetPoint("BOTTOMLEFT", 24, 38)
+    else
+        checkbox:SetPoint("BOTTOMLEFT", 24, 10)
+    end
     checkbox:Show()
     return checkbox
 end
@@ -393,18 +398,18 @@ local function _AcquireButton(parent, index)
         button:SetHighlightTexture([[Interface\Buttons\UI-DialogBox-Button-Highlight]], "ADD")
         button:GetHighlightTexture():SetTexCoord(0, 1, 0, 0.71875)
 
+        button:SetNormalFontObject("GameFontNormal")
+        button:SetDisabledFontObject("GameFontDisable")
+        button:SetHighlightFontObject("GameFontHighlight")
+
         button:SetScript("OnClick", Button_OnClick)
     end
     active_buttons[#active_buttons + 1] = button
 
-    button:SetText(parent.delegate.buttons[index].text or "")
+    button:SetText(parent.delegate.buttons[index].text or "FOOF")
     button:SetParent(parent)
     button:SetID(index)
 
-    if index == 1 then
-    elseif index == 2 then
-    elseif index == 3 then
-    end
     button:Show()
     return button
 end
@@ -458,6 +463,31 @@ local function _BuildDialog(delegate, ...)
             if button.text and button.on_click then
                 table.insert(dialog.buttons, _AcquireButton(dialog, index))
             end
+        end
+        local num_buttons = #dialog.buttons
+
+        for index = 1, num_buttons do
+            local button = dialog.buttons[index]
+
+            if index == 1 then
+                if num_buttons == 3 then
+                    button:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -72, 16)
+                elseif num_buttons == 2 then
+                    button:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -6, 16)
+                elseif num_buttons == 1 then
+                    button:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 16)
+                end
+            else
+                button:SetPoint("LEFT", dialog.buttons[index - 1], "RIGHT", 13, 0)
+            end
+            local width = button:GetTextWidth()
+
+            if width > 110 then
+                button:SetWidth(width + 20)
+            else
+                button:SetWidth(120)
+            end
+            button:Enable()
         end
     end
 
@@ -590,10 +620,12 @@ function dialog_prototype:Resize()
         height = height + self.checkbox:GetHeight()
     end
 
-    if #self.buttons == MAX_BUTTONS then
-        width = math.max(width, 440)
-    elseif delegate.editbox.width and delegate.editbox.width > 260 then
+    if delegate.editbox.width and delegate.editbox.width > 260 then
         width = width + (delegate.editbox.width - 260)
+    end
+
+    if self.buttons and #self.buttons == MAX_BUTTONS then
+        width = math.max(width, 440)
     end
 
     if width > 0 then
