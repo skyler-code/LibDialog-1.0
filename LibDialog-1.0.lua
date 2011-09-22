@@ -508,6 +508,13 @@ function lib:Spawn(reference, ...)
         end
         return
     end
+
+    if _G.InCinematic() and not delegate.show_during_cinematic then
+        if delegate.on_cancel then
+            delegate.on_cancel()
+        end
+        return
+    end
     local dialog = _BuildDialog(delegate, ...)
 
     if not dialog then
