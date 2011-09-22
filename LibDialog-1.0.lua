@@ -8,6 +8,7 @@ local error = _G.error
 local pairs = _G.pairs
 
 -- Libraries
+local math = _G.math
 local table = _G.table
 
 -----------------------------------------------------------------------
@@ -590,7 +591,7 @@ function dialog_prototype:Resize()
     end
 
     if #self.buttons == MAX_BUTTONS then
-        width = 440
+        width = math.max(width, 440)
     elseif delegate.editbox.width and delegate.editbox.width > 260 then
         width = width + (delegate.editbox.width - 260)
     end
