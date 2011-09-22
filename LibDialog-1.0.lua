@@ -38,6 +38,7 @@ lib.queued_delegates = lib.queues_delegates or {}
 lib.delegate_queue = lib.delegate_queue or {}
 
 lib.active_dialogs = lib.active_dialogs or {}
+lib.active_buttons = lib.active_buttons or {}
 lib.active_checkboxes = lib.active_checkboxes or {}
 lib.active_editboxes = lib.active_editboxes or {}
 
@@ -54,6 +55,7 @@ local queued_delegates = lib.queued_delegates
 local delegate_queue = lib.delegate_queue
 
 local active_dialogs = lib.active_dialogs
+local active_buttons = lib.active_buttons
 local active_checkboxes = lib.active_checkboxes
 local active_editboxes = lib.active_editboxes
 
@@ -75,6 +77,7 @@ local DEFAULT_CHECKBOX_SIZE = 32
 local DEFAULT_DIALOG_TEXT_WIDTH = 290
 
 local MAX_DIALOGS = 4
+local MAX_BUTTONS = 3
 
 local DEFAULT_DIALOG_BACKDROP = {
     bgFile = [[Interface\DialogFrame\UI-DialogBox-Background]],
@@ -252,7 +255,7 @@ end
 
 local function CheckBox_OnClick(checkbox, mouse_button, down)
     local dialog = checkbox:GetParent()
-    local on_click = dialog.delegate.CheckBoxOnClick
+    local on_click = dialog.delegate.checkbox.on_click
 
     if on_click then
         on_click(checkbox, mouse_button, down, dialog.data)
@@ -268,14 +271,9 @@ local function _AcquireCheckBox(parent)
     end
     active_checkboxes[#active_checkboxes + 1] = checkbox
 
+    checkbox.text:SetText(parent.delegate.checkbox.label or "")
     checkbox:SetParent(parent)
-    checkbox.text:SetText(parent.delegate.CheckBoxText or "")
-
---    if parent.editbox then
---        checkbox:SetPoint("TOPLEFT", parent.editbox, "BOTTOMLEFT", 0, 0)
---    else
-        checkbox:SetPoint("BOTTOMLEFT", 10, 10)
---    end
+    checkbox:SetPoint("BOTTOMLEFT", 10, 10)
     checkbox:Show()
     return checkbox
 end
@@ -283,7 +281,7 @@ end
 local function EditBox_OnEnterPressed(editbox)
     if not editbox.autoCompleteParams or not _G.AutoCompleteEditBox_OnEnterPressed(editbox) then
         local dialog = editbox:GetParent()
-        local on_enter_pressed = dialog.delegate.EditBoxOnEnterPressed
+        local on_enter_pressed = dialog.delegate.editbox.on_enter_pressed
 
         if on_enter_pressed then
             on_enter_pressed(editbox, dialog.data)
@@ -293,7 +291,7 @@ end
 
 local function EditBox_OnEscapePressed(editbox)
     local dialog = editbox:GetParent()
-    local on_escape_pressed = dialog.delegate.EditBoxOnEscapePressed
+    local on_escape_pressed = dialog.delegate.editbox.on_escape_pressed
 
     if on_escape_pressed then
         on_escape_pressed(editbox, dialog.data)
@@ -303,7 +301,7 @@ end
 local function EditBox_OnTextChanged(editbox, user_input)
     if not editbox.autoCompleteParams or not _G.AutoCompleteEditBox_OnTextChanged(editbox, user_input) then
         local dialog = editbox:GetParent()
-        local on_text_changed = dialog.delegate.EditBoxOnTextChanged
+        local on_text_changed = dialog.delegate.editbox.on_text_changed
 
         if on_text_changed then
             on_text_changed(editbox, dialog.data)
@@ -346,11 +344,59 @@ local function _AcquireEditBox(parent)
     end
     active_editboxes[#active_editboxes + 1] = editbox
 
-    editbox:SetText("")
+    editbox.addHighlightedText = true
+
+    editbox:SetText(parent.delegate.editbox.text or "")
     editbox:SetParent(parent)
     editbox:SetPoint("TOP", parent.text, "BOTTOM", 0, -8)
     editbox:Show()
     return editbox
+end
+
+local function Button_OnClick(button, mouse_button, down)
+    local dialog = button:GetParent()
+    local on_click = dialog.delegate.buttons[button:GetID()].on_click
+
+    if on_click then
+        on_click(button, mouse_button, down, dialog.data)
+    end
+end
+
+local function _AcquireButton(parent, index)
+    local button = table.remove(button_heap)
+
+    if not button then
+        local button_name = ("%s_Button%d"):format(MAJOR, #active_buttons + 1)
+        button = _G.CreateFrame("Button", button_name, _G.UIParent)
+        button:SetWidth(128)
+        button:SetHeight(21)
+
+        button:SetNormalTexture([[Interface\Buttons\UI-DialogBox-Button-Up]])
+        button:GetNormalTexture():SetTexCoord(0, 1, 0, 0.71875)
+
+        button:SetPushedTexture([[Interface\Buttons\UI-DialogBox-Button-Down]])
+        button:GetPushedTexture():SetTexCoord(0, 1, 0, 0.71875)
+
+        button:SetDisabledTexture([[Interface\Buttons\UI-DialogBox-Button-Disabled]])
+        button:GetDisabledTexture():SetTexCoord(0, 1, 0, 0.71875)
+
+        button:SetHighlightTexture([[Interface\Buttons\UI-DialogBox-Button-Highlight]], "ADD")
+        button:GetHighlightTexture():SetTexCoord(0, 1, 0, 0.71875)
+
+        button:SetScript("OnClick", Button_OnClick)
+    end
+    active_buttons[#active_buttons + 1] = button
+
+    button:SetText(parent.delegate.buttons[index].text or "")
+    button:SetParent(parent)
+    button:SetID(index)
+
+    if index == 1 then
+    elseif index == 2 then
+    elseif index == 3 then
+    end
+    button:Show()
+    return button
 end
 
 local function _BuildDialog(delegate, ...)
@@ -389,14 +435,28 @@ local function _BuildDialog(delegate, ...)
     dialog.data = data
     dialog.text:SetText(dialog_text)
 
-    if delegate.has_editbox then
-        local editbox = _AcquireEditBox(dialog)
-        dialog.editbox = editbox
+    if delegate.buttons then
+        dialog.buttons = {}
+
+        for index = 1, MAX_BUTTONS do
+            local button = delegate.buttons[index]
+
+            if not button then
+                break
+            end
+
+            if button.text and button.on_click then
+                table.insert(dialog.buttons, _AcquireButton(dialog, index))
+            end
+        end
     end
 
-    if delegate.has_checkbox then
-        local checkbox = _AcquireCheckBox(dialog)
-        dialog.checkbox = checkbox
+    if delegate.editbox then
+        dialog.editbox = _AcquireEditBox(dialog)
+    end
+
+    if delegate.checkbox then
+        dialog.checkbox = _AcquireCheckBox(dialog)
     end
     dialog:Resize()
     return dialog
@@ -492,8 +552,11 @@ function dialog_prototype:Resize()
         end
         return
     end
-
     height = 32 + self.text:GetHeight()
+
+    if self.buttons then
+        height = height + 8 + self.buttons[1]:GetHeight()
+    end
 
     if self.editbox then
         height = height + self.editbox:GetHeight()
@@ -501,6 +564,12 @@ function dialog_prototype:Resize()
 
     if self.checkbox then
         height = height + self.checkbox:GetHeight()
+    end
+
+    if #self.buttons == MAX_BUTTONS then
+        width = 440
+    elseif delegate.editbox.width and delegate.editbox.width > 260 then
+        width = 420
     end
 
     if width > 0 then
