@@ -231,7 +231,10 @@ if not lib.hooked_escape_pressed then
 
         for index = 1, #active_dialogs do
             local dialog = active_dialogs[index]
-            dialogs_to_release[dialog] = true
+
+            if dialog.delegate.hide_on_escape then
+                dialogs_to_release[dialog] = true
+            end
         end
 
         for dialog in pairs(dialogs_to_release) do
