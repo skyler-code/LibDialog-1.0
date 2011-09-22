@@ -349,10 +349,15 @@ local function _AcquireEditBox(parent)
 
     editbox.addHighlightedText = true
 
-    editbox:SetAutoFocus(parent.delegate.editbox.auto_focus)
-    editbox:SetText(parent.delegate.editbox.text or "")
     editbox:SetParent(parent)
+    editbox:SetWidth(parent.delegate.editbox.width or DEFAULT_EDITBOX_WIDTH)
     editbox:SetPoint("TOP", parent.text, "BOTTOM", 0, -8)
+
+    editbox:SetAutoFocus(parent.delegate.editbox.auto_focus)
+    editbox:SetMaxLetters(parent.delegate.editbox.max_letters or 0)
+    editbox:SetMaxBytes(parent.delegate.editbox.max_bytes or 0)
+    editbox:SetText(parent.delegate.editbox.text or "")
+
     editbox:Show()
     return editbox
 end
@@ -542,8 +547,8 @@ end
 
 function dialog_prototype:Resize()
     local delegate = self.delegate
-    local width = delegate.width or 0
-    local height = delegate.height or 0
+    local width = delegate.width or DEFAULT_DIALOG_WIDTH
+    local height = delegate.height or DEFAULT_DIALOG_HEIGHT
 
     -- Static size ignores widgets for resizing purposes.
     if delegate.static_size then
@@ -573,7 +578,7 @@ function dialog_prototype:Resize()
     if #self.buttons == MAX_BUTTONS then
         width = 440
     elseif delegate.editbox.width and delegate.editbox.width > 260 then
-        width = 420
+        width = width + (delegate.editbox.width - 260)
     end
 
     if width > 0 then
