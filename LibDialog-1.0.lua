@@ -240,8 +240,8 @@ if not lib.hooked_escape_pressed then
         for dialog in pairs(dialogs_to_release) do
             local delegate = dialog.delegate
 
-            if delegate.OnCancel and not delegate.cancel_ignores_escape then
-                delegate.OnCancel(dialog)
+            if delegate.on_cancel and not delegate.cancel_ignores_escape then
+                delegate.on_cancel(dialog)
             end
             dialog:Hide()
         end
@@ -491,21 +491,28 @@ function lib:Spawn(reference, ...)
     if reference == "" or (reference_type ~= "string" and reference_type ~= "table") then
         error(METHOD_USAGE_FORMAT:format("Spawn", "reference must be a delegate table or a non-empty string"), 2)
     end
-    local dialog
+    local delegate
 
     if reference_type == "string" then
         if not self.delegates[reference] then
             error(METHOD_USAGE_FORMAT:format("Spawn", ("\"%s\" does not match a registered delegate"):format(reference)), 2)
         end
-        dialog = _BuildDialog(self.delegates[reference], ...)
+        delegate = self.delegates[reference]
     else
-        dialog = _BuildDialog(reference, ...)
+        delegate = reference
     end
+
+    if _G.UnitIsDeadOrGhost("player") and not delegate.show_while_dead then
+        if delegate.on_cancel then
+            delegate.on_cancel()
+        end
+        return
+    end
+    local dialog = _BuildDialog(delegate, ...)
 
     if not dialog then
         return
     end
-    local delegate = dialog.delegate
 
     if delegate.sound then
         _G.PlaySound(delegate.sound)
