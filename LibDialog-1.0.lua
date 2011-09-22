@@ -349,6 +349,7 @@ local function _AcquireEditBox(parent)
 
     editbox.addHighlightedText = true
 
+    editbox:SetAutoFocus(parent.delegate.editbox.auto_focus)
     editbox:SetText(parent.delegate.editbox.text or "")
     editbox:SetParent(parent)
     editbox:SetPoint("TOP", parent.text, "BOTTOM", 0, -8)
