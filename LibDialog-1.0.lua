@@ -290,7 +290,7 @@ end
 local function EditBox_OnEnterPressed(editbox)
     if not editbox.autoCompleteParams or not _G.AutoCompleteEditBox_OnEnterPressed(editbox) then
         local dialog = editbox:GetParent()
-        local on_enter_pressed = dialog.delegate.editbox.on_enter_pressed
+        local on_enter_pressed = dialog.delegate.editboxes[editbox:GetID()].on_enter_pressed
 
         if on_enter_pressed then
             on_enter_pressed(editbox, dialog.data)
@@ -300,7 +300,7 @@ end
 
 local function EditBox_OnEscapePressed(editbox)
     local dialog = editbox:GetParent()
-    local on_escape_pressed = dialog.delegate.editbox.on_escape_pressed
+    local on_escape_pressed = dialog.delegate.editboxes[editbox:GetID()].on_escape_pressed
 
     if on_escape_pressed then
         on_escape_pressed(editbox, dialog.data)
@@ -310,7 +310,7 @@ end
 local function EditBox_OnTextChanged(editbox, user_input)
     if not editbox.autoCompleteParams or not _G.AutoCompleteEditBox_OnTextChanged(editbox, user_input) then
         local dialog = editbox:GetParent()
-        local on_text_changed = dialog.delegate.editbox.on_text_changed
+        local on_text_changed = dialog.delegate.editboxes[editbox:GetID()].on_text_changed
 
         if on_text_changed then
             on_text_changed(editbox, dialog.data)
@@ -318,7 +318,7 @@ local function EditBox_OnTextChanged(editbox, user_input)
     end
 end
 
-local function _AcquireEditBox(parent)
+local function _AcquireEditBox(parent, index)
     local editbox = table.remove(editbox_heap)
 
     if not editbox then
@@ -347,23 +347,38 @@ local function _AcquireEditBox(parent)
         mid:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
         mid:SetPoint("TOPRIGHT", right, "TOPLEFT", 0, 0)
 
+        local label = editbox:CreateFontString(("%sLabel"):format(editbox_name), "ARTWORK", "GameFontNormalSmall")
+        label:SetPoint("RIGHT", editbox, "LEFT", -15, 0)
+
+        editbox.left = left
+        editbox.right = right
+        editbox.mid = mid
+        editbox.label = label
+
         editbox:SetScript("OnEnterPressed", EditBox_OnEnterPressed)
         editbox:SetScript("OnEscapePressed", EditBox_OnEscapePressed)
         editbox:SetScript("OnTextChanged", EditBox_OnTextChanged)
     end
+    local template = parent.delegate.editboxes[index]
+
     active_editboxes[#active_editboxes + 1] = editbox
 
     editbox.addHighlightedText = true
 
     editbox:SetParent(parent)
-    editbox:SetWidth(parent.delegate.editbox.width or DEFAULT_EDITBOX_WIDTH)
-    editbox:SetPoint("TOP", parent.text, "BOTTOM", 0, -8)
+    editbox:SetID(index)
+    editbox:SetWidth(template.width or DEFAULT_EDITBOX_WIDTH)
 
-    editbox:SetAutoFocus(parent.delegate.editbox.auto_focus)
-    editbox:SetMaxLetters(parent.delegate.editbox.max_letters or 0)
-    editbox:SetMaxBytes(parent.delegate.editbox.max_bytes or 0)
-    editbox:SetText(parent.delegate.editbox.text or "")
+    editbox:SetAutoFocus(template.auto_focus)
+    editbox:SetMaxLetters(template.max_letters or 0)
+    editbox:SetMaxBytes(template.max_bytes or 0)
+    editbox:SetText(template.text or "")
 
+    if template.label and template.label ~= "" then
+        editbox.label:SetText(template.label)
+    else
+        editbox.label:Hide()
+    end
     editbox:Show()
     return editbox
 end
@@ -450,7 +465,7 @@ local function _BuildDialog(delegate, ...)
     dialog.data = data
     dialog.text:SetText(dialog_text)
 
-    if delegate.buttons then
+    if delegate.buttons and #delegate.buttons > 0 then
         dialog.buttons = {}
 
         for index = 1, MAX_BUTTONS do
@@ -491,8 +506,23 @@ local function _BuildDialog(delegate, ...)
         end
     end
 
-    if delegate.editbox then
-        dialog.editbox = _AcquireEditBox(dialog)
+    if delegate.editboxes and #delegate.editboxes > 0 then
+        dialog.editboxes = {}
+
+        for index = 1, #delegate.editboxes do
+            table.insert(dialog.editboxes, _AcquireEditBox(dialog, index))
+        end
+        local num_editboxes = #dialog.editboxes
+
+        for index = 1, num_editboxes do
+            local editbox = dialog.editboxes[index]
+
+            if index == 1 then
+                editbox:SetPoint("TOP", dialog.text, "BOTTOM", 0, -8)
+            else
+                editbox:SetPoint("TOP", dialog.editboxes[index - 1], "BOTTOM", 0, 0)
+            end
+        end
     end
 
     if delegate.checkbox then
@@ -612,16 +642,38 @@ function dialog_prototype:Resize()
         height = height + 8 + self.buttons[1]:GetHeight()
     end
 
-    if self.editbox then
-        height = height + self.editbox:GetHeight()
+    if self.editboxes then
+        local label_maxwidth = 0
+        local EDITBOX_MAXWIDTH = 260
+        local extra_width = 0
+
+        for index = 1, #self.editboxes do
+            local editbox = self.editboxes[index]
+            height = height + editbox:GetHeight()
+
+            if editbox.label:IsShown() and editbox.label:GetStringWidth() > 0 then
+                if editbox.label:GetStringWidth() + 120 > label_maxwidth then
+                    label_maxwidth = editbox.label:GetStringWidth() + 120
+                end
+            end
+            local editbox_width = editbox:GetWidth()
+
+            if editbox_width > EDITBOX_MAXWIDTH and editbox_width - EDITBOX_MAXWIDTH > extra_width then
+                extra_width = (editbox_width - EDITBOX_MAXWIDTH)
+            end
+        end
+
+        if extra_width > 0 then
+            width = width + extra_width
+        end
+
+        if label_maxwidth > 0 then
+            width = width + label_maxwidth
+        end
     end
 
     if self.checkbox then
         height = height + self.checkbox:GetHeight()
-    end
-
-    if delegate.editbox.width and delegate.editbox.width > 260 then
-        width = width + (delegate.editbox.width - 260)
     end
 
     if self.buttons and #self.buttons == MAX_BUTTONS then
