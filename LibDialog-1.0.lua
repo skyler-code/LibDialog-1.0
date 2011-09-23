@@ -259,14 +259,14 @@ end
 
 local function CheckBox_OnClick(checkbox, mouse_button, down)
     local dialog = checkbox:GetParent()
-    local on_click = dialog.delegate.checkbox.on_click
+    local on_click = dialog.delegate.checkboxes[checkbox:GetID()].on_click
 
     if on_click then
         on_click(checkbox, mouse_button, down, dialog.data)
     end
 end
 
-local function _AcquireCheckBox(parent)
+local function _AcquireCheckBox(parent, index)
     local checkbox = table.remove(checkbox_heap)
 
     if not checkbox then
@@ -275,14 +275,10 @@ local function _AcquireCheckBox(parent)
     end
     active_checkboxes[#active_checkboxes + 1] = checkbox
 
-    checkbox.text:SetText(parent.delegate.checkbox.label or "")
+    checkbox.text:SetText(parent.delegate.checkboxes[index].label or "")
     checkbox:SetParent(parent)
+    checkbox:SetID(index)
 
-    if parent.buttons and #parent.buttons > 0 then
-        checkbox:SetPoint("BOTTOMLEFT", 24, 38)
-    else
-        checkbox:SetPoint("BOTTOMLEFT", 24, 10)
-    end
     checkbox:Show()
     return checkbox
 end
@@ -525,8 +521,27 @@ local function _BuildDialog(delegate, ...)
         end
     end
 
-    if delegate.checkbox then
-        dialog.checkbox = _AcquireCheckBox(dialog)
+    if delegate.checkboxes and #delegate.checkboxes > 0 then
+        dialog.checkboxes = {}
+
+        for index = 1, #delegate.checkboxes do
+
+            table.insert(dialog.checkboxes, _AcquireCheckBox(dialog, index))
+        end
+
+        for index = 1, #dialog.checkboxes do
+            local checkbox = dialog.checkboxes[index]
+
+            if index == 1 then
+                if dialog.buttons and #dialog.buttons > 0 then
+                    checkbox:SetPoint("BOTTOMLEFT", 24, 38)
+                else
+                    checkbox:SetPoint("BOTTOMLEFT", 24, 10)
+                end
+            else
+                checkbox:SetPoint("TOP", dialog.checkboxes[index - 1], "BOTTOM", 0, 0)
+            end
+        end
     end
     dialog:Resize()
     return dialog
@@ -672,8 +687,8 @@ function dialog_prototype:Resize()
         end
     end
 
-    if self.checkbox then
-        height = height + self.checkbox:GetHeight()
+    if self.checkboxes then
+            height = height + (self.checkboxes[1]:GetHeight() * #self.checkboxes)
     end
 
     if self.buttons and #self.buttons == MAX_BUTTONS then
