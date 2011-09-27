@@ -165,7 +165,7 @@ end
 local function _ReleaseCheckBox(checkbox)
     checkbox.container:Hide()
     _RecycleWidget(checkbox, active_checkboxes, checkbox_heap)
-    checkbox:SetParent(nil)
+    checkbox.container:SetParent(nil)
 end
 
 local function _ReleaseEditBox(editbox)
