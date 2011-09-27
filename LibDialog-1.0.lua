@@ -42,11 +42,13 @@ lib.active_dialogs = lib.active_dialogs or {}
 lib.active_buttons = lib.active_buttons or {}
 lib.active_checkboxes = lib.active_checkboxes or {}
 lib.active_editboxes = lib.active_editboxes or {}
+lib.active_icons = lib.active_icons or {}
 
 lib.dialog_heap = lib.dialog_heap or {}
 lib.button_heap = lib.button_heap or {}
 lib.checkbox_heap = lib.checkbox_heap or {}
 lib.editbox_heap = lib.editbox_heap or {}
+lib.icon_heap = lib.icon_heap or {}
 
 -----------------------------------------------------------------------
 -- Constants.
@@ -59,11 +61,13 @@ local active_dialogs = lib.active_dialogs
 local active_buttons = lib.active_buttons
 local active_checkboxes = lib.active_checkboxes
 local active_editboxes = lib.active_editboxes
+local active_icons = lib.active_icons
 
 local dialog_heap = lib.dialog_heap
 local button_heap = lib.button_heap
 local checkbox_heap = lib.checkbox_heap
 local editbox_heap = lib.editbox_heap
+local icon_heap = lib.icon_heap
 
 local METHOD_USAGE_FORMAT = MAJOR .. ":%s() - %s."
 
@@ -77,6 +81,8 @@ local DEFAULT_EDITBOX_WIDTH = 130
 local DEFAULT_EDITBOX_HEIGHT = 32
 
 local DEFAULT_CHECKBOX_SIZE = 32
+
+local DEFAULT_ICON_SIZE = 36
 
 local DEFAULT_DIALOG_TEXT_WIDTH = 290
 
@@ -168,18 +174,35 @@ local function _ReleaseEditBox(editbox)
     editbox:SetParent(nil)
 end
 
+local function _ReleaseButton(button)
+    button:Hide()
+    _RecycleWidget(button, active_buttons, button_heap)
+    button:SetParent(nil)
+end
+
 local function _ReleaseDialog(dialog)
     dialog.delegate = nil
     dialog.data = nil
 
-    if dialog.editbox then
-        _ReleaseEditBox(dialog.editbox)
-        dialog.editbox = nil
+    if dialog.editboxes then
+        for index = 1, #dialog.editboxes do
+            _ReleaseEditBox(dialog.editboxes[index])
+        end
+        dialog.editboxes = nil
     end
 
-    if dialog.checkbox then
-        _ReleaseCheckBox(dialog.checkbox)
-        dialog.checkbox = nil
+    if dialog.checkboxes then
+        for index = 1, #dialog.checkboxes do
+            _ReleaseCheckBox(dialog.checkboxes[index])
+        end
+        dialog.checkboxes = nil
+    end
+
+    if dialog.buttons then
+        for index = 1, #dialog.buttons do
+            _ReleaseButton(dialog.buttons[index])
+        end
+        dialog.buttons = nil
     end
     _RecycleWidget(dialog, active_dialogs, dialog_heap)
     _RefreshDialogAnchors()
@@ -475,6 +498,20 @@ local function _BuildDialog(delegate, ...)
     dialog.data = data
     dialog.text:SetText(dialog_text)
 
+    if _G.type(delegate.icon) == "string" then
+        if not dialog.icon then
+            dialog.icon = dialog:CreateTexture(("%sIcon"):format(dialog:GetName()), "ARTWORK")
+            dialog.icon:SetWidth(DEFAULT_ICON_SIZE)
+            dialog.icon:SetHeight(DEFAULT_ICON_SIZE)
+            dialog.icon:SetPoint("RIGHT", dialog.text, "LEFT", -5, 0)
+        end
+        dialog.icon:SetTexture(delegate.icon)
+        dialog.icon:Show()
+    elseif dialog.icon then
+        dialog.icon:SetTexture()
+        dialog.icon:Hide()
+    end
+
     if delegate.buttons and #delegate.buttons > 0 then
         dialog.buttons = {}
 
@@ -691,7 +728,7 @@ function dialog_prototype:Resize()
         height = height + 8 + DEFAULT_BUTTON_HEIGHT
 
         if #self.buttons == MAX_BUTTONS then
-            width = math.max(width, 440)
+            width = 440
         end
     end
 
@@ -717,7 +754,14 @@ function dialog_prototype:Resize()
     if self.checkboxes then
         height = height + (DEFAULT_CHECKBOX_SIZE * #self.checkboxes)
     end
-    self.text:SetWidth(width - 60)
+
+    if self.icon and self.icon:IsShown() then
+        local icon_width = DEFAULT_ICON_SIZE * 1.75
+        width = width + icon_width
+        self.text:SetWidth(width - (icon_width * 2))
+    else
+        self.text:SetWidth(width - 60)
+    end
     height = height + 32 + self.text:GetHeight()
 
     self:SetWidth(width)
