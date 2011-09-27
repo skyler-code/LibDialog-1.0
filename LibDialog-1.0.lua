@@ -70,6 +70,9 @@ local METHOD_USAGE_FORMAT = MAJOR .. ":%s() - %s."
 local DEFAULT_DIALOG_WIDTH = 320
 local DEFAULT_DIALOG_HEIGHT = 72
 
+local DEFAULT_BUTTON_WIDTH = 128
+local DEFAULT_BUTTON_HEIGHT = 21
+
 local DEFAULT_EDITBOX_WIDTH = 130
 local DEFAULT_EDITBOX_HEIGHT = 32
 
@@ -154,7 +157,7 @@ local function _RecycleWidget(widget, actives, heap)
 end
 
 local function _ReleaseCheckBox(checkbox)
-    checkbox:Hide()
+    checkbox.container:Hide()
     _RecycleWidget(checkbox, active_checkboxes, checkbox_heap)
     checkbox:SetParent(nil)
 end
@@ -270,16 +273,22 @@ local function _AcquireCheckBox(parent, index)
     local checkbox = table.remove(checkbox_heap)
 
     if not checkbox then
-        checkbox = _G.CreateFrame("CheckButton", ("%s_CheckBox%d"):format(MAJOR, #active_checkboxes + 1), _G.UIParent, "UICheckButtonTemplate")
+        local container = _G.CreateFrame("Frame", ("%s_CheckBoxContainer%d"):format(MAJOR, #active_checkboxes + 1), _G.UIParent)
+        container:SetHeight(DEFAULT_CHECKBOX_SIZE)
+
+        checkbox = _G.CreateFrame("CheckButton", ("%s_CheckBox%d"):format(MAJOR, #active_checkboxes + 1), container, "UICheckButtonTemplate")
         checkbox:SetScript("OnClick", CheckBox_OnClick)
+
+        checkbox.container = container
     end
     active_checkboxes[#active_checkboxes + 1] = checkbox
 
+    checkbox:SetPoint("LEFT", 0, 0)
     checkbox.text:SetText(parent.delegate.checkboxes[index].label or "")
-    checkbox:SetParent(parent)
+    checkbox.container:SetParent(parent)
     checkbox:SetID(index)
 
-    checkbox:Show()
+    checkbox.container:Show()
     return checkbox
 end
 
@@ -366,12 +375,17 @@ local function _AcquireEditBox(parent, index)
     editbox:SetWidth(template.width or DEFAULT_EDITBOX_WIDTH)
 
     editbox:SetAutoFocus(template.auto_focus)
+
+    if not template.auto_focus then
+        editbox:ClearFocus()
+    end
     editbox:SetMaxLetters(template.max_letters or 0)
     editbox:SetMaxBytes(template.max_bytes or 0)
     editbox:SetText(template.text or "")
 
     if template.label and template.label ~= "" then
         editbox.label:SetText(template.label)
+        editbox.label:SetWidth(editbox.label:GetStringWidth())
     else
         editbox.label:Hide()
     end
@@ -394,8 +408,8 @@ local function _AcquireButton(parent, index)
     if not button then
         local button_name = ("%s_Button%d"):format(MAJOR, #active_buttons + 1)
         button = _G.CreateFrame("Button", button_name, _G.UIParent)
-        button:SetWidth(128)
-        button:SetHeight(21)
+        button:SetWidth(DEFAULT_BUTTON_WIDTH)
+        button:SetHeight(DEFAULT_BUTTON_HEIGHT)
 
         button:SetNormalTexture([[Interface\Buttons\UI-DialogBox-Button-Up]])
         button:GetNormalTexture():SetTexCoord(0, 1, 0, 0.71875)
@@ -475,17 +489,17 @@ local function _BuildDialog(delegate, ...)
                 table.insert(dialog.buttons, _AcquireButton(dialog, index))
             end
         end
-        local num_buttons = #dialog.buttons
+        local NUM_BUTTONS = #dialog.buttons
 
-        for index = 1, num_buttons do
+        for index = 1, NUM_BUTTONS do
             local button = dialog.buttons[index]
 
             if index == 1 then
-                if num_buttons == 3 then
+                if NUM_BUTTONS == 3 then
                     button:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -72, 16)
-                elseif num_buttons == 2 then
+                elseif NUM_BUTTONS == 2 then
                     button:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -6, 16)
-                elseif num_buttons == 1 then
+                elseif NUM_BUTTONS == 1 then
                     button:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 16)
                 end
             else
@@ -501,6 +515,7 @@ local function _BuildDialog(delegate, ...)
             button:Enable()
         end
     end
+    local NUM_EDITBOXES = 0
 
     if delegate.editboxes and #delegate.editboxes > 0 then
         dialog.editboxes = {}
@@ -508,15 +523,25 @@ local function _BuildDialog(delegate, ...)
         for index = 1, #delegate.editboxes do
             table.insert(dialog.editboxes, _AcquireEditBox(dialog, index))
         end
-        local num_editboxes = #dialog.editboxes
+        NUM_EDITBOXES = #dialog.editboxes
 
-        for index = 1, num_editboxes do
+        for index = 1, NUM_EDITBOXES do
             local editbox = dialog.editboxes[index]
 
             if index == 1 then
-                editbox:SetPoint("TOP", dialog.text, "BOTTOM", 0, -8)
+                if editbox.label:IsShown() then
+                    editbox:SetPoint("TOPLEFT", dialog.text, "BOTTOM", 0, -8)
+                else
+                    editbox:SetPoint("TOP", dialog.text, "BOTTOM", 0, -8)
+                end
             else
-                editbox:SetPoint("TOP", dialog.editboxes[index - 1], "BOTTOM", 0, 0)
+                local spacing = 8 + (editbox:GetHeight() * (index - 1))
+
+                if editbox.label:IsShown() then
+                    editbox:SetPoint("TOPLEFT", dialog.text, "BOTTOM", 0, -spacing)
+                else
+                    editbox:SetPoint("TOP", dialog.text, "BOTTOM", 0, -spacing)
+                end
             end
         end
     end
@@ -525,25 +550,33 @@ local function _BuildDialog(delegate, ...)
         dialog.checkboxes = {}
 
         for index = 1, #delegate.checkboxes do
-
             table.insert(dialog.checkboxes, _AcquireCheckBox(dialog, index))
+        end
+        local max_string_width = 0
+
+        for index = 1, #dialog.checkboxes do
+            local string_width = dialog.checkboxes[index].text:GetStringWidth()
+
+            if string_width > max_string_width then
+                max_string_width = string_width
+            end
         end
 
         for index = 1, #dialog.checkboxes do
             local checkbox = dialog.checkboxes[index]
+            checkbox.container:SetWidth(DEFAULT_CHECKBOX_SIZE + max_string_width)
 
             if index == 1 then
-                if dialog.buttons and #dialog.buttons > 0 then
-                    checkbox:SetPoint("BOTTOMLEFT", 24, 38)
+                if NUM_EDITBOXES > 0 then
+                    checkbox.container:SetPoint("TOPLEFT", dialog.editboxes[NUM_EDITBOXES], "BOTTOMLEFT", -12, 0)
                 else
-                    checkbox:SetPoint("BOTTOMLEFT", 24, 10)
+                    checkbox.container:SetPoint("TOP", dialog.text, "BOTTOM", 0, -8)
                 end
             else
-                checkbox:SetPoint("TOP", dialog.checkboxes[index - 1], "BOTTOM", 0, 0)
+                checkbox.container:SetPoint("TOPLEFT", dialog.checkboxes[index - 1].container, "BOTTOMLEFT", 0, 0)
             end
         end
     end
-    dialog:Resize()
     return dialog
 end
 
@@ -615,6 +648,7 @@ function lib:Spawn(reference, ...)
     end
     active_dialogs[#active_dialogs + 1] = dialog
     dialog:Show()
+    dialog:Resize()
     return dialog
 end
 
@@ -637,13 +671,14 @@ end
 
 function dialog_prototype:Resize()
     local delegate = self.delegate
-    local width = delegate.width or DEFAULT_DIALOG_WIDTH
-    local height = delegate.height or DEFAULT_DIALOG_HEIGHT
+    local width = delegate.width or 0
+    local height = delegate.height or 0
 
     -- Static size ignores widgets for resizing purposes.
     if delegate.static_size then
         if width > 0 then
             self:SetWidth(width)
+            self.text:SetWidth(self:GetWidth() - 30)
         end
 
         if height > 0 then
@@ -651,55 +686,40 @@ function dialog_prototype:Resize()
         end
         return
     end
-    height = 32 + self.text:GetHeight()
 
-    if self.buttons then
-        height = height + 8 + self.buttons[1]:GetHeight()
+    if self.buttons and #self.buttons > 0 then
+        height = height + 8 + DEFAULT_BUTTON_HEIGHT
+
+        if #self.buttons == MAX_BUTTONS then
+            width = math.max(width, 440)
+        end
     end
 
-    if self.editboxes then
-        local label_maxwidth = 0
-        local EDITBOX_MAXWIDTH = 260
-        local extra_width = 0
+    if self.editboxes and #self.editboxes > 0 then
+        local dialog_left = self:GetLeft()
+        local offset = 0
 
         for index = 1, #self.editboxes do
             local editbox = self.editboxes[index]
-            height = height + editbox:GetHeight()
+            height = height + DEFAULT_EDITBOX_HEIGHT
 
-            if editbox.label:IsShown() and editbox.label:GetStringWidth() > 0 then
-                if editbox.label:GetStringWidth() + 120 > label_maxwidth then
-                    label_maxwidth = editbox.label:GetStringWidth() + 120
+            if editbox.label:IsShown() then
+                local label_left = editbox.label:GetLeft()
+
+                if label_left and label_left < dialog_left and offset < dialog_left - label_left then
+                    offset = dialog_left - label_left
                 end
             end
-            local editbox_width = editbox:GetWidth()
-
-            if editbox_width > EDITBOX_MAXWIDTH and editbox_width - EDITBOX_MAXWIDTH > extra_width then
-                extra_width = (editbox_width - EDITBOX_MAXWIDTH)
-            end
         end
-
-        if extra_width > 0 then
-            width = width + extra_width
-        end
-
-        if label_maxwidth > 0 then
-            width = width + label_maxwidth
-        end
+        width = width + offset
     end
 
     if self.checkboxes then
-            height = height + (self.checkboxes[1]:GetHeight() * #self.checkboxes)
+        height = height + (DEFAULT_CHECKBOX_SIZE * #self.checkboxes)
     end
+    self.text:SetWidth(width - 60)
+    height = height + 32 + self.text:GetHeight()
 
-    if self.buttons and #self.buttons == MAX_BUTTONS then
-        width = math.max(width, 440)
-    end
-
-    if width > 0 then
-        self:SetWidth(width)
-    end
-
-    if height > 0 then
-        self:SetHeight(height)
-    end
+    self:SetWidth(width)
+    self:SetHeight(height)
 end
