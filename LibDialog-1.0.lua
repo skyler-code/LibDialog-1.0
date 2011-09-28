@@ -283,13 +283,23 @@ if not lib.hooked_escape_pressed then
     lib.hooked_escape_pressed = true
 end
 
-local function CheckBox_OnClick(checkbox, mouse_button, down)
-    local dialog = checkbox:GetParent()
-    local on_click = dialog.delegate.checkboxes[checkbox:GetID()].on_click
+local function CheckBox_GetValue(checkbox)
+    local dialog = checkbox:GetParent():GetParent()
+    local get_value = dialog.delegate.checkboxes[checkbox:GetID()].get_value
 
-    if on_click then
-        on_click(checkbox, mouse_button, down, dialog.data)
+    if get_value then
+        return get_value(checkbox, dialog.data)
     end
+end
+
+local function CheckBox_OnClick(checkbox, mouse_button, down)
+    local dialog = checkbox:GetParent():GetParent()
+    local set_value = dialog.delegate.checkboxes[checkbox:GetID()].set_value
+
+    if set_value then
+        set_value(checkbox, CheckBox_GetValue(checkbox), dialog.data, mouse_button, down)
+    end
+    checkbox:SetChecked(CheckBox_GetValue(checkbox))
 end
 
 local function _AcquireCheckBox(parent, index)
@@ -310,6 +320,7 @@ local function _AcquireCheckBox(parent, index)
     checkbox.text:SetText(parent.delegate.checkboxes[index].label or "")
     checkbox.container:SetParent(parent)
     checkbox:SetID(index)
+    checkbox:SetChecked(CheckBox_GetValue(checkbox))
 
     checkbox.container:Show()
     return checkbox
@@ -423,6 +434,7 @@ local function Button_OnClick(button, mouse_button, down)
     if on_click then
         on_click(button, mouse_button, down, dialog.data)
     end
+    dialog:Hide()
 end
 
 local function _AcquireButton(parent, index)
@@ -462,14 +474,7 @@ local function _AcquireButton(parent, index)
     return button
 end
 
-local function _BuildDialog(delegate, ...)
-    local data = ...
---    local dialog_text = delegate.text
---
---    if not dialog_text or dialog_text == "" then
---        error("Dialog text required.", 3)
---    end
-
+local function _BuildDialog(delegate, data)
     if #active_dialogs == MAX_DIALOGS then
         if not queued_delegates[delegate] then
             delegate_queue[#delegate_queue + 1] = delegate
@@ -632,7 +637,7 @@ function lib:Register(delegate_name, delegate)
     self.delegates[delegate_name] = delegate
 end
 
-function lib:Spawn(reference, ...)
+function lib:Spawn(reference, data)
     local reference_type = _G.type(reference)
 
     if reference == "" or (reference_type ~= "string" and reference_type ~= "table") then
@@ -662,7 +667,7 @@ function lib:Spawn(reference, ...)
         end
         return
     end
-    local dialog = _BuildDialog(delegate, ...)
+    local dialog = _BuildDialog(delegate, data)
 
     if not dialog then
         return
