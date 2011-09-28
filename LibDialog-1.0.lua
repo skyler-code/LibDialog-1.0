@@ -734,21 +734,32 @@ function dialog_prototype:Resize()
 
     if self.editboxes and #self.editboxes > 0 then
         local dialog_left = self:GetLeft()
-        local offset = 0
+        local dialog_right = self:GetRight()
+        local label_offset = 0
+        local editbox_offset = 0
 
         for index = 1, #self.editboxes do
             local editbox = self.editboxes[index]
+            local editbox_right = editbox:GetRight()
             height = height + DEFAULT_EDITBOX_HEIGHT
+
+            if editbox_right then
+                if editbox_offset < 25 and dialog_right > editbox_right and (dialog_right - editbox_right) < 25 then
+                    editbox_offset = 25
+                elseif editbox_right > dialog_right and editbox_offset < editbox_right - dialog_right then
+                    editbox_offset = 25 + (editbox_right - dialog_right)
+                end
+            end
 
             if editbox.label:IsShown() then
                 local label_left = editbox.label:GetLeft()
 
-                if label_left and label_left < dialog_left and offset < dialog_left - label_left then
-                    offset = dialog_left - label_left
+                if label_left and label_left < dialog_left and label_offset < dialog_left - label_left then
+                    label_offset = dialog_left - label_left
                 end
             end
         end
-        width = width + offset
+        width = width + label_offset + editbox_offset
     end
 
     if self.checkboxes then
