@@ -213,8 +213,8 @@ local function _Dialog_OnShow(dialog)
 
     _G.PlaySound("igMainMenuOpen")
 
-    if delegate.OnShow then
-        delegate.OnShow(dialog, dialog.data)
+    if delegate.on_show then
+        delegate.on_show(dialog, dialog.data)
     end
 end
 
@@ -223,8 +223,8 @@ local function _Dialog_OnHide(dialog)
 
     _G.PlaySound("igMainMenuClose")
 
-    if delegate.OnHide then
-        delegate.OnHide(dialog, dialog.data)
+    if delegate.on_hide then
+        delegate.on_hide(dialog, dialog.data)
     end
     _ReleaseDialog(dialog)
 end
@@ -481,6 +481,7 @@ local function _BuildDialog(delegate, ...)
 
     if not dialog then
         dialog = _G.setmetatable(_G.CreateFrame("Frame", ("%s_Dialog%d"):format(MAJOR, #active_dialogs + 1), _G.UIParent), dialog_meta)
+        dialog.is_new = true
 
         local close_button = _G.CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
         close_button:SetPoint("TOPRIGHT", -3, -3)
@@ -685,6 +686,11 @@ function lib:Spawn(reference, ...)
     end
     active_dialogs[#active_dialogs + 1] = dialog
     dialog:Show()
+
+    if dialog.is_new then
+        _Dialog_OnShow(dialog)
+        dialog.is_new = nil
+    end
     dialog:Resize()
     return dialog
 end
