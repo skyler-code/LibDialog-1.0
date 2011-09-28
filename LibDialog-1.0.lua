@@ -464,11 +464,11 @@ end
 
 local function _BuildDialog(delegate, ...)
     local data = ...
-    local dialog_text = delegate.text
-
-    if not dialog_text or dialog_text == "" then
-        error("Dialog text required.", 3)
-    end
+--    local dialog_text = delegate.text
+--
+--    if not dialog_text or dialog_text == "" then
+--        error("Dialog text required.", 3)
+--    end
 
     if #active_dialogs == MAX_DIALOGS then
         if not queued_delegates[delegate] then
@@ -497,7 +497,7 @@ local function _BuildDialog(delegate, ...)
     dialog:Reset()
     dialog.delegate = delegate
     dialog.data = data
-    dialog.text:SetText(dialog_text)
+    dialog.text:SetText(delegate.text or "")
 
     if _G.type(delegate.icon) == "string" then
         if not dialog.icon then
@@ -714,7 +714,7 @@ end
 
 function dialog_prototype:Resize()
     local delegate = self.delegate
-    local width = delegate.width or 0
+    local width = delegate.width or DEFAULT_DIALOG_WIDTH
     local height = delegate.height or 0
 
     -- Static size ignores widgets for resizing purposes.
@@ -771,7 +771,7 @@ function dialog_prototype:Resize()
     if self.checkboxes then
         height = height + (DEFAULT_CHECKBOX_SIZE * #self.checkboxes)
     end
-
+    print(("In Resize(): dialog text is '%s'"):format(self.text:GetText()))
     if self.icon and self.icon:IsShown() then
         local icon_width = DEFAULT_ICON_SIZE * 1.75
         width = width + icon_width
@@ -779,8 +779,10 @@ function dialog_prototype:Resize()
     else
         self.text:SetWidth(width - 60)
     end
+    print(("Set the dialog text's width to %d"):format(self.text:GetWidth()))
     height = height + 32 + self.text:GetHeight()
 
+    print(("Setting dialog width to %d"):format(width))
     self:SetWidth(width)
     self:SetHeight(height)
 end
