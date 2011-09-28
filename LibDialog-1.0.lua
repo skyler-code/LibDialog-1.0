@@ -528,7 +528,7 @@ local function _BuildDialog(delegate, data)
                 break
             end
 
-            if button.text and button.on_click then
+            if button.text then
                 table.insert(dialog.buttons, _AcquireButton(dialog, index))
             end
         end
