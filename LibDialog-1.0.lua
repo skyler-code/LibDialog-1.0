@@ -746,6 +746,32 @@ function lib:IsActive(reference, data)
     end
 end
 
+function lib:Dismiss(reference, data)
+    local reference_type = _G.type(reference)
+
+    if reference == "" or (reference_type ~= "string" and reference_type ~= "table") then
+        error(METHOD_USAGE_FORMAT:format("Dismiss", "reference must be a delegate table or a non-empty string"), 2)
+    end
+    local delegate
+
+    if reference_type == "string" then
+        if not self.delegates[reference] then
+            error(METHOD_USAGE_FORMAT:format("Dismiss", ("\"%s\" does not match a registered delegate"):format(reference)), 2)
+        end
+        delegate = self.delegates[reference]
+    else
+        delegate = reference
+    end
+
+    for index = 1, #active_dialogs do
+        local dialog = active_dialogs[index]
+
+        if dialog.delegate == delegate and (not data or dialog.data == data) then
+            dialog:Hide()
+        end
+    end
+end
+
 -----------------------------------------------------------------------
 -- Dialog methods.
 -----------------------------------------------------------------------
