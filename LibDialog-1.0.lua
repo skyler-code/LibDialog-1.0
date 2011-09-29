@@ -696,6 +696,20 @@ function lib:Spawn(reference, data)
         end
         return
     end
+
+    if delegate.is_exclusive then
+        for index = 1, #active_dialogs do
+            local dialog = active_dialogs[index]
+
+            if dialog:IsShown() and dialog.delegate.is_exclusive then
+                dialog:Hide()
+
+                if delegate.on_cancel then
+                    delegate.oncancel(dialog, dialog.data, "override")
+                end
+            end
+        end
+    end
     local dialog = _BuildDialog(delegate, data)
 
     if not dialog then
