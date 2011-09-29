@@ -287,7 +287,7 @@ if not lib.hooked_escape_pressed then
         for dialog in pairs(dialogs_to_release) do
             local delegate = dialog.delegate
 
-            if delegate.on_cancel and not delegate.cancel_ignores_escape then
+            if delegate.on_cancel and not delegate.no_cancel_on_escape then
                 delegate.on_cancel(dialog)
             end
             dialog:Hide()
