@@ -237,6 +237,12 @@ local function _Dialog_OnUpdate(dialog, elapsed)
     end
 end
 
+local function _Dialog_OnEvent(self, event, ...)
+    if self[event] then
+        return self[event](self, event, ...)
+    end
+end
+
 if not lib.hooked_onhide then
     _G.hooksecurefunc("StaticPopup_OnHide", function()
         _RefreshDialogAnchors()
@@ -724,6 +730,7 @@ function dialog_prototype:Reset()
     self:SetScript("OnShow", _Dialog_OnShow)
     self:SetScript("OnHide", _Dialog_OnHide)
     self:SetScript("OnUpdate", _Dialog_OnUpdate)
+    self:SetScript("OnEvent", _Dialog_OnEvent)
 end
 
 function dialog_prototype:Resize()
