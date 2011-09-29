@@ -156,9 +156,10 @@ local function _RecycleWidget(widget, actives, heap)
         end
     end
 
-    if remove_index then
-        table.remove(actives, remove_index):ClearAllPoints()
+    if not remove_index then
+        return
     end
+    table.remove(actives, remove_index):ClearAllPoints()
     table.insert(heap, widget)
 end
 
