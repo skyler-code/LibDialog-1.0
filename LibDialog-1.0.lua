@@ -701,12 +701,36 @@ function lib:Spawn(reference, data)
         for index = 1, #active_dialogs do
             local dialog = active_dialogs[index]
 
-            if dialog:IsShown() and dialog.delegate.is_exclusive then
+            if dialog.delegate.is_exclusive then
                 dialog:Hide()
 
-                if delegate.on_cancel then
-                    delegate.oncancel(dialog, dialog.data, "override")
+                if dialog.delegate.on_cancel then
+                    dialog.delegate.oncancel(dialog, dialog.data, "override")
                 end
+            end
+        end
+    end
+    local cancel_list = delegate.cancels_on_spawn
+
+    if cancel_list then
+        for index = 1, #cancel_list do
+            local delegate_name = cancel_list[index]
+            local delegate_to_cancel = self.delegates[delegate_name]
+
+            if delegate_to_cancel then
+                for index = 1, #active_dialogs do
+                    local dialog = active_dialogs[index]
+
+                    if dialog.delegate == delegate_to_cancel then
+                        dialog:Hide()
+
+                        if dialog.delegate.on_cancel then
+                            dialog.delegate.oncancel(dialog, dialog.data, "override")
+                        end
+                    end
+                end
+            else
+                error(("\"%s\" does not match a registered delegate - unable to cancel"):format(delegate_name), 2)
             end
         end
     end
