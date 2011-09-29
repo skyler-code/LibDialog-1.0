@@ -229,6 +229,14 @@ local function _Dialog_OnHide(dialog)
     _ReleaseDialog(dialog)
 end
 
+local function _Dialog_OnUpdate(dialog, elapsed)
+    local delegate = dialog.delegate
+
+    if delegate.on_update then
+        delegate.on_update(dialog, elapsed)
+    end
+end
+
 if not lib.hooked_onhide then
     _G.hooksecurefunc("StaticPopup_OnHide", function()
         _RefreshDialogAnchors()
@@ -715,6 +723,7 @@ function dialog_prototype:Reset()
 
     self:SetScript("OnShow", _Dialog_OnShow)
     self:SetScript("OnHide", _Dialog_OnHide)
+    self:SetScript("OnUpdate", _Dialog_OnUpdate)
 end
 
 function dialog_prototype:Resize()
