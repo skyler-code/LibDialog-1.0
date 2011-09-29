@@ -657,22 +657,27 @@ function lib:Register(delegate_name, delegate)
     self.delegates[delegate_name] = delegate
 end
 
-function lib:Spawn(reference, data)
+local function _FindDelegate(method_name, reference)
     local reference_type = _G.type(reference)
 
     if reference == "" or (reference_type ~= "string" and reference_type ~= "table") then
-        error(METHOD_USAGE_FORMAT:format("Spawn", "reference must be a delegate table or a non-empty string"), 2)
+        error(METHOD_USAGE_FORMAT:format(method_name, "reference must be a delegate table or a non-empty string"), 3)
     end
     local delegate
 
     if reference_type == "string" then
-        if not self.delegates[reference] then
-            error(METHOD_USAGE_FORMAT:format("Spawn", ("\"%s\" does not match a registered delegate"):format(reference)), 2)
+        if not lib.delegates[reference] then
+            error(METHOD_USAGE_FORMAT:format(method_name, ("\"%s\" does not match a registered delegate"):format(reference)), 3)
         end
-        delegate = self.delegates[reference]
+        delegate = lib.delegates[reference]
     else
         delegate = reference
     end
+    return delegate
+end
+
+function lib:Spawn(reference, data)
+    local delegate = _FindDelegate("Spawn", reference)
 
     if _G.UnitIsDeadOrGhost("player") and not delegate.show_while_dead then
         if delegate.on_cancel then
@@ -721,21 +726,7 @@ function lib:Spawn(reference, data)
 end
 
 function lib:IsActive(reference, data)
-    local reference_type = _G.type(reference)
-
-    if reference == "" or (reference_type ~= "string" and reference_type ~= "table") then
-        error(METHOD_USAGE_FORMAT:format("IsActive", "reference must be a delegate table or a non-empty string"), 2)
-    end
-    local delegate
-
-    if reference_type == "string" then
-        if not self.delegates[reference] then
-            error(METHOD_USAGE_FORMAT:format("IsActive", ("\"%s\" does not match a registered delegate"):format(reference)), 2)
-        end
-        delegate = self.delegates[reference]
-    else
-        delegate = reference
-    end
+    local delegate = _FindDelegate("IsActive", reference)
 
     for index = 1, #active_dialogs do
         local dialog = active_dialogs[index]
@@ -747,21 +738,7 @@ function lib:IsActive(reference, data)
 end
 
 function lib:Dismiss(reference, data)
-    local reference_type = _G.type(reference)
-
-    if reference == "" or (reference_type ~= "string" and reference_type ~= "table") then
-        error(METHOD_USAGE_FORMAT:format("Dismiss", "reference must be a delegate table or a non-empty string"), 2)
-    end
-    local delegate
-
-    if reference_type == "string" then
-        if not self.delegates[reference] then
-            error(METHOD_USAGE_FORMAT:format("Dismiss", ("\"%s\" does not match a registered delegate"):format(reference)), 2)
-        end
-        delegate = self.delegates[reference]
-    else
-        delegate = reference
-    end
+    local delegate = _FindDelegate("Dismiss", reference)
 
     for index = 1, #active_dialogs do
         local dialog = active_dialogs[index]
