@@ -169,6 +169,8 @@ local function _ReleaseCheckBox(checkbox)
 end
 
 local function _ReleaseEditBox(editbox)
+    editbox:SetMaxLetters(0)
+    editbox:SetMaxBytes(0)
     editbox:Hide()
     _RecycleWidget(editbox, active_editboxes, editbox_heap)
     editbox:SetParent(nil)
@@ -443,12 +445,16 @@ end
 
 local function Button_OnClick(button, mouse_button, down)
     local dialog = button:GetParent()
+    local hide = true
     local on_click = dialog.delegate.buttons[button:GetID()].on_click
 
     if on_click then
-        on_click(button, mouse_button, down, dialog.data)
+        hide = not on_click(dialog, dialog.data, "clicked")
     end
-    dialog:Hide()
+
+    if hide then
+        dialog:Hide()
+    end
 end
 
 local function _AcquireButton(parent, index)
