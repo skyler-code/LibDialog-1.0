@@ -731,6 +731,8 @@ function dialog_prototype:Reset()
     self:SetScript("OnHide", _Dialog_OnHide)
     self:SetScript("OnUpdate", _Dialog_OnUpdate)
     self:SetScript("OnEvent", _Dialog_OnEvent)
+
+    self:RegisterEvent("DISPLAY_SIZE_CHANGED")
 end
 
 function dialog_prototype:Resize()
@@ -792,7 +794,7 @@ function dialog_prototype:Resize()
     if self.checkboxes then
         height = height + (DEFAULT_CHECKBOX_SIZE * #self.checkboxes)
     end
-    print(("In Resize(): dialog text is '%s'"):format(self.text:GetText()))
+
     if self.icon and self.icon:IsShown() then
         local icon_width = DEFAULT_ICON_SIZE * 1.75
         width = width + icon_width
@@ -800,10 +802,12 @@ function dialog_prototype:Resize()
     else
         self.text:SetWidth(width - 60)
     end
-    print(("Set the dialog text's width to %d"):format(self.text:GetWidth()))
     height = height + 32 + self.text:GetHeight()
 
-    print(("Setting dialog width to %d"):format(width))
     self:SetWidth(width)
     self:SetHeight(height)
+end
+
+function dialog_prototype:DISPLAY_SIZE_CHANGED()
+    self:Resize()
 end
