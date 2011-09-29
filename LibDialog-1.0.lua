@@ -226,6 +226,9 @@ local function _Dialog_OnHide(dialog)
 
     _G.PlaySound("igMainMenuClose")
 
+    -- Required so lib:IsActive() will return false if called from code called from the delegate's on_hide
+    _RecycleWidget(dialog, active_dialogs, dialog_heap)
+
     if delegate.on_hide then
         delegate.on_hide(dialog, dialog.data)
     end
