@@ -683,6 +683,9 @@ end
 function lib:Spawn(reference, data)
     local delegate = _FindDelegate("Spawn", reference)
 
+    -----------------------------------------------------------------------
+    -- Check delegate conditionals before building.
+    -----------------------------------------------------------------------
     if _G.UnitIsDeadOrGhost("player") and not delegate.show_while_dead then
         if delegate.on_cancel then
             delegate.on_cancel()
@@ -734,7 +737,21 @@ function lib:Spawn(reference, data)
             end
         end
     end
-    local dialog = _BuildDialog(delegate, data)
+    local dialog = self:ActiveDialog(reference, data)
+
+    if dialog then
+        local delegate = dialog.delegate
+
+        if not delegate.no_cancel_on_reuse and delegate.on_cancel then
+            delegate.on_cancel(dialog, dialog.data, "override")
+        end
+        dialog:Hide()
+    end
+
+    -----------------------------------------------------------------------
+    -- Build new dialog and anchor it.
+    -----------------------------------------------------------------------
+    dialog = _BuildDialog(delegate, data)
 
     if not dialog then
         return
@@ -767,14 +784,14 @@ function lib:Spawn(reference, data)
     return dialog
 end
 
-function lib:IsActive(reference, data)
+function lib:ActiveDialog(reference, data)
     local delegate = _FindDelegate("IsActive", reference)
 
     for index = 1, #active_dialogs do
         local dialog = active_dialogs[index]
 
         if dialog.delegate == delegate and (not data or dialog.data == data) then
-            return true
+            return dialog
         end
     end
 end
