@@ -658,7 +658,7 @@ function lib:Register(delegate_name, delegate)
     if _G.type(delegate) ~= "table" then
         error(METHOD_USAGE_FORMAT:format("Register", "delegate must be a table"), 2)
     end
-    self.delegates[delegate_name] = delegate
+    delegates[delegate_name] = delegate
 end
 
 local function _FindDelegate(method_name, reference)
@@ -670,10 +670,10 @@ local function _FindDelegate(method_name, reference)
     local delegate
 
     if reference_type == "string" then
-        if not lib.delegates[reference] then
+        if not delegates[reference] then
             error(METHOD_USAGE_FORMAT:format(method_name, ("\"%s\" does not match a registered delegate"):format(reference)), 3)
         end
-        delegate = lib.delegates[reference]
+        delegate = delegates[reference]
     else
         delegate = reference
     end
@@ -718,7 +718,7 @@ function lib:Spawn(reference, data)
     if cancel_list then
         for index = 1, #cancel_list do
             local delegate_name = cancel_list[index]
-            local delegate_to_cancel = self.delegates[delegate_name]
+            local delegate_to_cancel = delegates[delegate_name]
 
             if delegate_to_cancel then
                 for index = 1, #active_dialogs do
