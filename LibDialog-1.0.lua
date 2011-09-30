@@ -1,3 +1,10 @@
+--- **LibDialog-1.0** provides methods for creating dialogs similar to Blizzard's default StaticPopup dialogs,
+-- with additions (such as multiple CheckButtons) and improvements (such as multiple EditBoxes, frame and widget
+-- recycling, and not tainting default UI elements).
+-- @class file
+-- @name LibDialog-1.0.lua
+-- @release 1
+
 -----------------------------------------------------------------------
 -- Upvalued Lua API.
 -----------------------------------------------------------------------
@@ -53,22 +60,6 @@ lib.icon_heap = lib.icon_heap or {}
 -----------------------------------------------------------------------
 -- Constants.
 -----------------------------------------------------------------------
-local delegates = lib.delegates
-local queued_delegates = lib.queued_delegates
-local delegate_queue = lib.delegate_queue
-
-local active_dialogs = lib.active_dialogs
-local active_buttons = lib.active_buttons
-local active_checkboxes = lib.active_checkboxes
-local active_editboxes = lib.active_editboxes
-local active_icons = lib.active_icons
-
-local dialog_heap = lib.dialog_heap
-local button_heap = lib.button_heap
-local checkbox_heap = lib.checkbox_heap
-local editbox_heap = lib.editbox_heap
-local icon_heap = lib.icon_heap
-
 local METHOD_USAGE_FORMAT = MAJOR .. ":%s() - %s."
 
 local DEFAULT_DIALOG_WIDTH = 320
@@ -106,6 +97,21 @@ local DEFAULT_DIALOG_BACKDROP = {
 -----------------------------------------------------------------------
 -- Upvalues.
 -----------------------------------------------------------------------
+local delegates = lib.delegates
+local queued_delegates = lib.queued_delegates
+local delegate_queue = lib.delegate_queue
+
+local active_dialogs = lib.active_dialogs
+local active_buttons = lib.active_buttons
+local active_checkboxes = lib.active_checkboxes
+local active_editboxes = lib.active_editboxes
+local active_icons = lib.active_icons
+
+local dialog_heap = lib.dialog_heap
+local button_heap = lib.button_heap
+local checkbox_heap = lib.checkbox_heap
+local editbox_heap = lib.editbox_heap
+local icon_heap = lib.icon_heap
 
 -----------------------------------------------------------------------
 -- Helper functions.
@@ -650,6 +656,9 @@ end
 -----------------------------------------------------------------------
 -- Library methods.
 -----------------------------------------------------------------------
+--- Register a new dialog delegate.
+-- @param delegate_name The name the delegate table will be registered under.
+-- @param delegate The delegate table definition.
 function lib:Register(delegate_name, delegate)
     if _G.type(delegate_name) ~= "string" or delegate_name == "" then
         error(METHOD_USAGE_FORMAT:format("Register", "delegate_name must be a non-empty string"), 2)
@@ -680,6 +689,9 @@ local function _FindDelegate(method_name, reference)
     return delegate
 end
 
+--- Spawns a dialog from a delegate reference.
+-- @param reference The delegate to be used for the spawned dialog. Can be either a string, in which case the delegate must be registered, or a delegate definition table.
+-- @param data Additional data to be passed on to the resultant dialog.
 function lib:Spawn(reference, data)
     local delegate = _FindDelegate("Spawn", reference)
 
@@ -784,6 +796,9 @@ function lib:Spawn(reference, data)
     return dialog
 end
 
+--- Determines whether or not a specific dialog is currently active.
+-- @param reference The delegate criteria for the dialog being targeted. Can be either a string, in which case the delegate must be registered, or a delegate definition table.
+-- @param data Additional data to be used as further criteria to determine if the target dialog is active - this would be the same data used to spawn the dialog.
 function lib:ActiveDialog(reference, data)
     local delegate = _FindDelegate("ActiveDialog", reference)
 
@@ -796,6 +811,9 @@ function lib:ActiveDialog(reference, data)
     end
 end
 
+--- Dismisses a specific dialog.
+-- @param reference The delegate criteria for the dialog being targeted. Can be either a string, in which case the delegate must be registered, or a delegate definition table.
+-- @param data Additional data to be used as further criteria to identify the target dialog - this would be the same data used to spawn the dialog.
 function lib:Dismiss(reference, data)
     local delegate = _FindDelegate("Dismiss", reference)
 
