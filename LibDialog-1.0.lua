@@ -244,6 +244,21 @@ end
 local function _Dialog_OnUpdate(dialog, elapsed)
     local delegate = dialog.delegate
 
+    if dialog.time_remaining and dialog.time_remaining > 0 then
+        local remaining = dialog.time_remaining - elapsed
+
+        if remaining <= 0 then
+            dialog.time_remaining = nil
+
+            if delegate.on_cancel then
+                delegate.oncancel(dialog, dialog.data, "timeout")
+            end
+            dialog:Hide()
+            return
+        end
+        dialog.time_remaining = remaining
+    end
+
     if delegate.on_update then
         delegate.on_update(dialog, elapsed)
     end
@@ -650,6 +665,7 @@ local function _BuildDialog(delegate, data)
             end
         end
     end
+    dialog.time_remaining = delegate.duration
     return dialog
 end
 
