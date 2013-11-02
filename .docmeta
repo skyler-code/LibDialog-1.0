@@ -1,4 +1,4 @@
 -
   type: luadoc
   input-file: LibDialog-1.0.lua
-  output-page: API
+  output-page: API Reference
