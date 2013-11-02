@@ -542,6 +542,7 @@ local function _BuildDialog(delegate, data)
 
         local close_button = _G.CreateFrame("Button", nil, dialog, "UIPanelCloseButton")
         close_button:SetPoint("TOPRIGHT", -3, -3)
+        close_button:Hide()
 
         dialog.close_button = close_button
 
@@ -555,6 +556,12 @@ local function _BuildDialog(delegate, data)
     dialog.delegate = delegate
     dialog.data = data
     dialog.text:SetText(delegate.text or "")
+
+    if delegate.no_close_button then
+        dialog.close_button:Hide()
+    else
+        dialog.close_button:Show()
+    end
 
     if _G.type(delegate.icon) == "string" then
         if not dialog.icon then
