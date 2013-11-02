@@ -239,6 +239,13 @@ local function _Dialog_OnHide(dialog)
         delegate.on_hide(dialog, dialog.data)
     end
     _ReleaseDialog(dialog)
+
+    if #delegate_queue > 0 then
+        local delegate
+        repeat
+            delegate = _ProcessQueue()
+            until not delegate
+    end
 end
 
 local function _Dialog_OnUpdate(dialog, elapsed)
