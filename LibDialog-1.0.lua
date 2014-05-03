@@ -896,6 +896,10 @@ end
 
 function dialog_prototype:Resize()
     local delegate = self.delegate
+    if not delegate then
+        return
+    end
+
     local width = delegate.width or DEFAULT_DIALOG_WIDTH
     local height = delegate.height or 0
 
